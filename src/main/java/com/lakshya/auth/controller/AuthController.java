@@ -1,10 +1,12 @@
 package com.lakshya.auth.controller;
 
+import com.lakshya.auth.dto.AuthResponse;
 import com.lakshya.auth.dto.LoginRequest;
 import com.lakshya.auth.dto.RegisterRequest;
 import com.lakshya.auth.entity.User;
 import com.lakshya.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,9 +24,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request) {
-
-        User user = authService.login(request);
-        return "Login successful for user: " + user.getEmail();
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }
