@@ -6,28 +6,27 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "stocks")
-@Getter
-@Setter
-@Builder
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Stock {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
-    @Column(unique = true, nullable = false)
     private String symbol;
 
-    private String name;
+    private double price;
 
-    private Double price;
+    private double high;
 
-    private Double changePercent;
+    private double low;
 
-    private String sector;
+    private long volume;
 
-    private LocalDateTime lastUpdated;
+    private double previousClose;
+
+    private LocalDateTime updatedAt;
 }

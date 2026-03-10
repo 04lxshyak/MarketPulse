@@ -19,8 +19,8 @@ public class StockController {
         return stockService.getAllStocks();
     }
 
-    @PostMapping
-    public Stock createStock(@RequestBody Stock stock) {
-        return stockService.saveStock(stock);
+    @GetMapping("/fetch/{symbol}")
+    public Stock fetchStock(@PathVariable String symbol) {
+        return stockService.fetchStockFromYahoo(symbol);
     }
 }
