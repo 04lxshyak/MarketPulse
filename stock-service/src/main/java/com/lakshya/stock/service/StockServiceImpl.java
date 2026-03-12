@@ -1,6 +1,7 @@
 package com.lakshya.stock.service;
 
 import com.lakshya.stock.entity.Stock;
+import com.lakshya.stock.kafka.StockProducer;
 import com.lakshya.stock.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
@@ -20,6 +21,7 @@ public class StockServiceImpl implements StockService {
 
     private final StockRepository stockRepository;
     private final RestTemplate restTemplate;
+    private final StockProducer stockProducer;
 
     @Override
     public List<Stock> getAllStocks() {
@@ -74,6 +76,10 @@ public class StockServiceImpl implements StockService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        return stockRepository.save(stock);
+        Stock savedStock = stockRepository.save(stock);
+
+        stockProducer.sendStockUpdate(savedStock);
+
+        return savedStock;
     }
 }
