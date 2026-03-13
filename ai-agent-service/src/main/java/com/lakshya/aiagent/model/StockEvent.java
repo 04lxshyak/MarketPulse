@@ -1,8 +1,10 @@
 package com.lakshya.aiagent.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class StockEvent {
 
     private String symbol;
@@ -10,4 +12,5 @@ public class StockEvent {
     private double high;
     private double low;
     private long volume;
+
 }

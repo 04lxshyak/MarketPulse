@@ -1,22 +1,31 @@
 package com.lakshya.aiagent.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lakshya.aiagent.model.RecommendationEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 @RequiredArgsConstructor
 public class RecommendationProducer {
 
-    private final KafkaTemplate<String, RecommendationEvent> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    private static final String TOPIC = "investment-recommendations";
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void sendRecommendation(RecommendationEvent event){
+    public void sendRecommendation(RecommendationEvent event) {
 
-        kafkaTemplate.send(TOPIC, event);
+        try {
 
-        System.out.println("Recommendation published: " + event);
+            String message = objectMapper.writeValueAsString(event);
+
+            kafkaTemplate.send("stock-recommendations", message);
+
+            System.out.println("Sent recommendation: " + message);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
