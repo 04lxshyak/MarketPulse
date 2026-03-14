@@ -21,3 +21,6 @@ spring:
 gemini:
   api:
     key: ${GEMINI_API_KEY}
+news:
+  api:
+    key: ${NEWS_API_KEY}

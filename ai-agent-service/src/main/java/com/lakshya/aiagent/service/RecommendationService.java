@@ -10,32 +10,14 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RecommendationService {
 
-    private final GeminiService geminiService;
+    private final StockAnalysisService stockAnalysisService;
     private final RecommendationProducer recommendationProducer;
 
     public void analyzeStock(StockEvent stock){
 
         try{
 
-            String prompt = """
-            Analyze this stock and give investment recommendation.
-
-            Symbol: %s
-            Price: %f
-            Day High: %f
-            Day Low: %f
-            Volume: %d
-
-            Return recommendation BUY SELL or HOLD with short reason.
-            """.formatted(
-                    stock.getSymbol(),
-                    stock.getPrice(),
-                    stock.getHigh(),
-                    stock.getLow(),
-                    stock.getVolume()
-            );
-
-            String aiResponse = geminiService.analyzeStock(prompt);
+            String aiResponse = stockAnalysisService.analyze(stock);
 
             RecommendationEvent event = new RecommendationEvent(
                     stock.getSymbol(),
@@ -46,10 +28,10 @@ public class RecommendationService {
 
             recommendationProducer.sendRecommendation(event);
 
-        }
-        catch (Exception e){
+            System.out.println("Sent recommendation: " + event);
+
+        }catch(Exception e){
             e.printStackTrace();
         }
-
     }
 }
