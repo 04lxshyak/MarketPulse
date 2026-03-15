@@ -8,20 +8,30 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class StockAnalysisService {
 
-    private final GeminiService geminiService;
     private final NewsService newsService;
+    private final GeminiService geminiService;
 
-    public String analyze(StockEvent stockEvent) {
+    public String analyze(StockEvent stock) {
 
-        String news = newsService.getNews(stockEvent.getSymbol());
+        try {
 
-        return geminiService.analyzeStock(
-                stockEvent.getSymbol(),
-                stockEvent.getPrice(),
-                stockEvent.getHigh(),
-                stockEvent.getLow(),
-                stockEvent.getVolume(),
-                news
-        );
+            String news = newsService.getNews(stock.getSymbol());
+
+            System.out.println("Fetched news for " + stock.getSymbol());
+
+            return geminiService.analyzeStock(
+                    stock.getSymbol(),
+                    stock.getPrice(),
+                    stock.getHigh(),
+                    stock.getLow(),
+                    stock.getVolume(),
+                    news
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "AI_ANALYSIS_FAILED";
     }
 }
