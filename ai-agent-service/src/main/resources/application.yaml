@@ -4,13 +4,23 @@ server:
 spring:
   application:
     name: ai-agent-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/stock_db
+    username: postgres
+    password: postgres
+
+    jpa:
+      hibernate:
+        ddl-auto: update
+      show-sql: true
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
     consumer:
       group-id: ai-agent-group
-      auto-offset-reset: earliest
+      auto-offset-reset: latest
+      enable-auto-commit: true
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
 

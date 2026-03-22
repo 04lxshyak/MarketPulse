@@ -1,5 +1,7 @@
 package com.lakshya.aiagent.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +15,7 @@ public class GeminiService {
     private String apiKey;
 
     private final OkHttpClient client = new OkHttpClient();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public String analyzeStock(String symbol,
                                double price,
@@ -23,72 +26,49 @@ public class GeminiService {
 
         try {
 
-            String prompt =
-                    """
-                    You are a professional stock market analyst AI.
+            String safeNews = news
+                    .replace("\"", "'")
+                    .replace("\n", " ")
+                    .replace("\r", " ");
 
-                    Analyze the following stock data and latest market news.
-                    Your goal is to provide a rational investment recommendation.
+            String prompt = """
+                You are a professional stock market analyst AI.
 
-                    Perform these steps internally:
-                    1. Analyze price relative to high/low range
-                    2. Evaluate trading volume strength
-                    3. Detect possible bullish or bearish signals
-                    4. Analyze sentiment from the news
-                    5. Assess risk level
-                    6. Provide a final investment recommendation
+                Analyze the following stock data and latest market news.
 
-                    STOCK DATA
-                    ----------
-                    Symbol: %s
-                    Current Price: %.2f
-                    Day High: %.2f
-                    Day Low: %.2f
-                    Volume: %d
+                Return ONLY valid JSON:
 
-                    MARKET NEWS
-                    -----------
-                    %s
+                {
+                  "symbol": "%s",
+                  "recommendation": "BUY | SELL | HOLD",
+                  "sentiment": "POSITIVE | NEGATIVE | NEUTRAL",
+                  "risk_level": "LOW | MEDIUM | HIGH",
+                  "confidence": 0,
+                  "reason": "Short explanation"
+                }
 
-                    RESPONSE FORMAT
-                    Return ONLY valid JSON.
+                STOCK:
+                Symbol: %s
+                Price: %.2f
+                High: %.2f
+                Low: %.2f
+                Volume: %d
 
-                    {
-                      "symbol": "%s",
-                      "recommendation": "BUY | SELL | HOLD",
-                      "sentiment": "POSITIVE | NEGATIVE | NEUTRAL",
-                      "risk_level": "LOW | MEDIUM | HIGH",
-                      "confidence": "0-100",
-                      "reason": "Short explanation in 1-2 sentences"
-                    }
-
-                    Rules:
-                    - Be conservative like a professional analyst
-                    - If news sentiment is negative, avoid BUY
-                    - If price near high with weak volume → HOLD
-                    - If price near low with positive news → BUY opportunity
-                    - If strong negative sentiment → SELL
-                    """.formatted(
-                            symbol,
-                            price,
-                            high,
-                            low,
-                            volume,
-                            news,
-                            symbol
-                    );
+                NEWS:
+                %s
+                """.formatted(symbol, symbol, price, high, low, volume, safeNews);
 
             String json = """
+                {
+                  "contents": [
                     {
-                      "contents": [
-                        {
-                          "parts": [
-                            {"text": "%s"}
-                          ]
-                        }
+                      "parts": [
+                        {"text": "%s"}
                       ]
                     }
-                    """.formatted(prompt.replace("\"","\\\""));
+                  ]
+                }
+                """.formatted(prompt.replace("\"", "\\\""));
 
             RequestBody body = RequestBody.create(
                     json,
@@ -96,17 +76,48 @@ public class GeminiService {
             );
 
             Request request = new Request.Builder()
-                    .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + apiKey)
+                    .url("https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=" + apiKey)
                     .post(body)
                     .build();
 
             Response response = client.newCall(request).execute();
 
             if (response.body() != null) {
-                return response.body().string();
+
+                String raw = response.body().string();
+
+                // 🔥 DEBUG (IMPORTANT)
+                System.out.println("GEMINI RAW RESPONSE: " + raw);
+
+                JsonNode root = mapper.readTree(raw);
+
+                JsonNode candidates = root.path("candidates");
+
+                // ✅ SAFE CHECK
+                if (!candidates.isArray() || candidates.size() == 0) {
+                    System.out.println("❌ No candidates found in Gemini response");
+                    return "AI_ERROR";
+                }
+
+                JsonNode first = candidates.get(0);
+                JsonNode parts = first.path("content").path("parts");
+
+                // ✅ SAFE CHECK
+                if (!parts.isArray() || parts.size() == 0) {
+                    System.out.println("❌ No parts found in Gemini response");
+                    return "AI_ERROR";
+                }
+
+                String text = parts.get(0).path("text").asText();
+
+                // 🔥 DEBUG
+                System.out.println("GEMINI TEXT: " + text);
+
+                return text;
             }
 
         } catch (Exception e) {
+            System.out.println("❌ Error in GeminiService");
             e.printStackTrace();
         }
 
