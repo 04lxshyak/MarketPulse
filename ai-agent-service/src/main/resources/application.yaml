@@ -9,10 +9,10 @@ spring:
     username: postgres
     password: postgres
 
-    jpa:
-      hibernate:
-        ddl-auto: update
-      show-sql: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -28,9 +28,18 @@ spring:
         spring.json.trusted.packages: "*"
         spring.json.value.default.type: com.lakshya.aiagent.model.StockEvent
 
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
 gemini:
   api:
     key: ${GEMINI_API_KEY}
 news:
   api:
     key: ${NEWS_API_KEY}
+
+logging:
+  level:
+    com.lakshya.aiagent: DEBUG
+    org.springframework.kafka: WARN

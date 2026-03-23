@@ -1,6 +1,5 @@
 package com.lakshya.aiagent.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lakshya.aiagent.model.StockRecommendation;
 import org.springframework.stereotype.Service;
@@ -10,48 +9,35 @@ public class AiParserService {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public StockRecommendation parse(String aiResponse) {
+    /**
+     * Parses the AI-extracted text (already unwrapped from the Gemini envelope by GeminiService)
+     * into a StockRecommendation. Handles markdown code fences like ```json ... ```.
+     */
+    public StockRecommendation parse(String aiText) {
         try {
+            System.out.println("AI RAW TEXT: " + aiText);
 
-            System.out.println("AI RAW RESPONSE: " + aiResponse);
-
-            JsonNode root = mapper.readTree(aiResponse);
-
-            JsonNode candidates = root.path("candidates");
-
-            // ✅ Step 1: validate candidates
-            if (!candidates.isArray() || candidates.size() == 0) {
-                System.out.println("❌ No candidates found in AI response");
-                return fallback();
+            // Strip markdown code fences if present
+            String text = aiText.trim();
+            if (text.startsWith("```json")) {
+                text = text.substring(7);
+            } else if (text.startsWith("```")) {
+                text = text.substring(3);
             }
-
-            JsonNode first = candidates.get(0);
-
-            JsonNode parts = first.path("content").path("parts");
-
-
-            if (!parts.isArray() || parts.size() == 0) {
-                System.out.println("❌ No parts found in AI response");
-                return fallback();
+            if (text.endsWith("```")) {
+                text = text.substring(0, text.length() - 3);
             }
+            text = text.trim();
 
-            String text = parts.get(0).path("text").asText();
+            System.out.println("AI PARSED TEXT: " + text);
 
-            System.out.println("AI EXTRACTED TEXT: " + text);
-
-
-            StockRecommendation recommendation =
-                    mapper.readValue(text, StockRecommendation.class);
-
-            return recommendation;
+            return mapper.readValue(text, StockRecommendation.class);
 
         } catch (Exception e) {
-            System.out.println("❌ Error while parsing AI response");
-            e.printStackTrace();
+            System.out.println("❌ Error while parsing AI text: " + e.getMessage());
             return fallback();
         }
     }
-
 
     private StockRecommendation fallback() {
         StockRecommendation sr = new StockRecommendation();
