@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion'
 import { 
   Search, 
@@ -12,19 +11,23 @@ import {
   ChevronRight,
   Activity,
   Star,
-  Users
+  Users,
+  LogOut,
+  User as UserIcon,
+  Loader2,
+  Lock
 } from 'lucide-react'
-
-const API_BASE = 'http://localhost:8083/api/recommendations'
+import { useAuth, api } from './AuthContext'
+import AuthModal from './AuthModal'
 
 const fetchRecommendations = async (symbol = '', page = 0) => {
   try {
-    const url = symbol ? `${API_BASE}?symbol=${symbol}&page=${page}&size=10` : `${API_BASE}?page=${page}&size=10`
-    const response = await axios.get(url)
+    const url = symbol ? `/recommendations?symbol=${symbol}&page=${page}&size=10` : `/recommendations?page=${page}&size=10`
+    const response = await api.get(url)
     return response.data
   } catch (err) {
     console.error("API Error:", err)
-    return { content: [] }
+    throw err;
   }
 }
 
@@ -52,10 +55,17 @@ const headerVariants = {
 }
 
 function App() {
+  const { user, token, logout, loading: authLoading } = useAuth()
   const [recommendations, setRecommendations] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [timeframe, setTimeframe] = useState('1M')
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [error, setError] = useState(null)
+  const [toastMessage, setToastMessage] = useState(null)
+
+  const terminalRef = useRef(null)
 
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, {
@@ -65,23 +75,65 @@ function App() {
   })
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadData(search)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [search, page])
+    if (token) {
+      const timer = setTimeout(() => {
+        loadData(search)
+      }, 500)
+      return () => clearTimeout(timer)
+    } else {
+      setRecommendations([])
+    }
+  }, [search, page, token])
 
   const loadData = async (symbol) => {
     setLoading(true)
-    const data = await fetchRecommendations(symbol, page)
-    setRecommendations(data.content || [])
-    setLoading(false)
+    setError(null)
+    try {
+      const data = await fetchRecommendations(symbol, page)
+      setRecommendations(data.content || [])
+    } catch (err) {
+      setError("Unable to fetch telemetry. Session may have expired.")
+      if (err.response?.status === 403 || err.response?.status === 401) {
+        logout()
+        setIsAuthModalOpen(true)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const scrollToTerminal = () => {
+    if (!token) {
+      setIsAuthModalOpen(true)
+      return
+    }
+    terminalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const showToast = (msg) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 3000)
   }
 
   return (
     <div className="app-wrapper">
       <motion.div className="scroll-progress" style={{ scaleX }} />
       <div className="bg-mesh" />
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 20, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            className="glass-effect"
+            style={{ position: 'fixed', top: 0, left: '50%', zIndex: 9999, padding: '1rem 2rem', borderRadius: '2rem', color: 'var(--primary)', fontWeight: 600, border: '1px solid var(--primary)', background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', gap: '0.8rem' }}
+          >
+            <Zap size={18} /> {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Navbar */}
       <motion.nav 
@@ -90,7 +142,7 @@ function App() {
         animate="visible"
         variants={headerVariants}
       >
-        <div className="logo">
+        <div className="logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ cursor: 'pointer' }}>
           <motion.div 
             className="logo-icon"
             whileHover={{ rotate: 180, scale: 1.1 }}
@@ -101,32 +153,63 @@ function App() {
           <span className="outfit">MarketPulse</span>
         </div>
         <div className="nav-links">
-          {['Terminal', 'How it works', 'Analytics', 'Enterprise'].map(link => (
+          {['Terminal', 'Features', 'Signals'].map(link => (
             <motion.a 
               key={link} 
               href="#" 
               className="nav-link"
               whileHover={{ y: -2 }}
+              onClick={(e) => {
+                e.preventDefault();
+                if (link === 'Terminal' || link === 'Signals') scrollToTerminal();
+                else if (link === 'Features') {
+                    document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
             >
               {link}
             </motion.a>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <motion.button 
-            className="nav-btn" 
-            style={{ background: 'transparent', color: 'white' }}
-            whileHover={{ opacity: 0.8 }}
-          >
-            Sign In
-          </motion.button>
-          <motion.button 
-            className="nav-btn"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Explore App
-          </motion.button>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {user ? (
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '1rem', border: '1px solid var(--glass-border)' }}>
+                 <UserIcon size={16} color="var(--primary)" />
+                 <span style={{ fontSize: '0.8rem', fontWeight: 700, opacity: 0.8 }}>{user.email.split('@')[0]}</span>
+              </div>
+              <motion.button 
+                className="close-btn"
+                whileHover={{ scale: 1.1 }}
+                onClick={logout}
+                title="Log Out"
+                style={{ cursor: 'pointer' }}
+              >
+                <LogOut size={18} />
+              </motion.button>
+            </div>
+          ) : (
+            <>
+              <motion.button 
+                className="nav-btn" 
+                style={{ background: 'transparent', color: 'white', cursor: 'pointer' }}
+                whileHover={{ opacity: 0.8 }}
+                onClick={() => setIsAuthModalOpen(true)}
+              >
+                Sign In
+              </motion.button>
+              <motion.button 
+                className="nav-btn"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setIsAuthModalOpen(true)}
+              >
+                Explore App
+              </motion.button>
+            </>
+          )}
         </div>
       </motion.nav>
 
@@ -150,8 +233,10 @@ function App() {
             variants={itemVariants}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={scrollToTerminal}
+            style={{ cursor: 'pointer' }}
           >
-            Launch Terminal <ArrowRight size={18} />
+            {user ? 'View Dashboard' : 'Launch Terminal'} <ArrowRight size={18} />
           </motion.button>
           
           <motion.div 
@@ -172,13 +257,14 @@ function App() {
               <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
                  {[1,2,3,4,5].map(i => <Star key={i} size={12} fill="var(--primary)" color="var(--primary)" />)}
               </div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>Trusted by 12,000+ Institutional Clients</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>Trusted by 12,000+ Investors</span>
             </div>
           </motion.div>
         </motion.section>
 
         {/* Main Dashboard Card */}
         <motion.main 
+          ref={terminalRef}
           className="main-card glass-effect"
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -199,6 +285,7 @@ function App() {
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: '0.8rem 1rem 0.8rem 2.8rem', borderRadius: '1rem', color: 'white', outline: 'none', width: '280px', fontSize: '0.875rem' }}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  disabled={!token}
                 />
               </div>
               <motion.div 
@@ -225,7 +312,8 @@ function App() {
                      <motion.button 
                        key={t} 
                        whileHover={{ background: 'rgba(255,255,255,0.05)' }}
-                       style={{ padding: '0.5rem 1rem', borderRadius: '0.6rem', border: 'none', background: t === '1M' ? 'var(--primary)' : 'transparent', color: t === '1M' ? 'black' : 'var(--text-dim)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                       style={{ padding: '0.5rem 1rem', borderRadius: '0.6rem', border: 'none', background: timeframe === t ? 'var(--primary)' : 'transparent', color: timeframe === t ? 'black' : 'var(--text-dim)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}
+                       onClick={() => setTimeframe(t)}
                      >
                        {t}
                      </motion.button>
@@ -243,7 +331,7 @@ function App() {
                     </linearGradient>
                   </defs>
                   <motion.path 
-                    d="M0,160 Q100,150 200,170 T400,110 T600,130 T800,50" 
+                    d={timeframe === '1D' ? "M0,160 Q100,120 200,100 T400,140 T600,80 T800,20" : "M0,160 Q100,150 200,170 T400,110 T600,130 T800,50"} 
                     fill="none" 
                     stroke="var(--primary)" 
                     strokeWidth="4"
@@ -253,7 +341,7 @@ function App() {
                     transition={{ duration: 2, ease: "easeInOut" }}
                   />
                   <motion.path 
-                    d="M0,160 Q100,150 200,170 T400,110 T600,130 T800,50 L800,200 L0,200 Z" 
+                    d={timeframe === '1D' ? "M0,160 Q100,120 200,100 T400,140 T600,80 T800,20 L800,200 L0,200 Z" : "M0,160 Q100,150 200,170 T400,110 T600,130 T800,50 L800,200 L0,200 Z"} 
                     fill="url(#chartGrad)"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -269,6 +357,12 @@ function App() {
                  className="glass-effect"
                  whileHover={{ y: -5, borderColor: 'var(--primary)' }}
                  style={{ background: 'rgba(255,255,255,0.02)', padding: '1.8rem', borderRadius: '1.5rem', marginBottom: '1.5rem', cursor: 'pointer' }}
+                 onClick={() => {
+                   if (!token) { setIsAuthModalOpen(true); return; }
+                   setSearch('RELIANCE.NS');
+                   scrollToTerminal();
+                   showToast('Deep Dive: Focusing on RELIANCE.NS');
+                 }}
                >
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
                     <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 600 }}>Top Performer Signal</span>
@@ -278,7 +372,7 @@ function App() {
                  <div style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.5px' }}>STRONG OVERWEIGHT</div>
                  <motion.button 
                    whileTap={{ scale: 0.95 }}
-                   style={{ width: '100%', marginTop: '1.8rem', background: 'white', border: 'none', color: 'black', padding: '1rem', borderRadius: '1rem', fontWeight: 800, fontSize: '0.875rem' }}
+                   style={{ width: '100%', marginTop: '1.8rem', background: 'white', border: 'none', color: 'black', padding: '1rem', borderRadius: '1rem', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer' }}
                  >
                    Deep Dive
                  </motion.button>
@@ -287,6 +381,7 @@ function App() {
                <motion.div 
                  whileHover={{ x: 5 }}
                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '0.5rem 0' }}
+                 onClick={() => showToast('Connecting to Global Risk Assessment Pipeline...')}
                >
                  <span className="outfit" style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>Risk Repartition</span>
                  <ChevronRight size={18} color="var(--text-muted)" />
@@ -297,6 +392,7 @@ function App() {
 
         {/* Features Section */}
         <motion.section 
+          id="features-section"
           className="features-grid"
           initial="hidden"
           whileInView="visible"
@@ -304,28 +400,28 @@ function App() {
           variants={containerVariants}
         >
           <motion.div className="feature-card" variants={itemVariants} whileHover={{ y: -10 }}>
-            <Shield className="feature-icon" size={28} />
-            <h3 className="outfit">Institution-Grade</h3>
-            <p>Your analysis vectors are processed through multi-layered cryptographic isolation.</p>
+            <Activity className="feature-icon" size={28} />
+            <h3 className="outfit">Real-Time Streams</h3>
+            <p>Live propagation of market data with instant AI-driven disruption detection and tracking.</p>
           </motion.div>
           <motion.div className="feature-card" variants={itemVariants} whileHover={{ y: -10 }}>
              <Zap className="feature-icon" size={28} />
-             <h3 className="outfit">Sub-ms Latency</h3>
-             <p>Real-time edge processing via Gemini 1.5 Pro and dedicated Kafka backbones.</p>
-          </motion.div>
-          <motion.div className="feature-card" variants={itemVariants} whileHover={{ y: -10 }}>
-             <BarChart3 className="feature-icon" size={28} />
-             <h3 className="outfit">Signal Optimization</h3>
-             <p>Optimized data telemetry points eliminate noise for high-conviction decision making.</p>
+             <h3 className="outfit">AI Conviction</h3>
+             <p>Deep sentiment analysis and structural pattern recognition for high-accuracy signals.</p>
           </motion.div>
           <motion.div className="feature-card" variants={itemVariants} whileHover={{ y: -10 }}>
              <Layers className="feature-icon" size={28} />
-             <h3 className="outfit">Infinite Scaling</h3>
-             <p>Architecture built for global distribution, capable of monitoring 1M+ instrument streams.</p>
+             <h3 className="outfit">Contextual Memory</h3>
+             <p>Recommendations are cross-referenced with your historical vectors for superior accuracy.</p>
+          </motion.div>
+          <motion.div className="feature-card" variants={itemVariants} whileHover={{ y: -10 }}>
+             <TrendingUp className="feature-icon" size={28} />
+             <h3 className="outfit">Actionable Alpha</h3>
+             <p>Clear BUY, HOLD, or SELL tactical indicators generated to guide portfolio strategy globally.</p>
           </motion.div>
         </motion.section>
 
-        {/* Recommendation Grid Section */}
+        {/* Intelligence Grid Section */}
         <motion.section 
           initial="hidden"
           whileInView="visible"
@@ -342,22 +438,49 @@ function App() {
                 href="#" 
                 whileHover={{ x: 5, color: 'var(--primary)' }}
                 style={{ color: 'white', textDecoration: 'none', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, background: 'rgba(255,255,255,0.03)', padding: '0.8rem 1.5rem', borderRadius: '1rem' }}
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  scrollToTerminal(); 
+                  setSearch(''); 
+                  showToast('Viewing All Active Signals');
+                }}
               >
-                Full Analytics <ArrowRight size={16} />
+                View All Signals <ArrowRight size={16} />
               </motion.a>
            </motion.div>
 
            <motion.div className="rec-grid" variants={containerVariants}>
              <AnimatePresence mode="popLayout">
-               {loading ? (
+               {!token ? (
+                 <motion.div 
+                   key="locked"
+                   initial={{ opacity: 0 }}
+                   animate={{ opacity: 1 }}
+                   className="glass-effect"
+                   style={{ gridColumn: '1 / -1', padding: '8rem 2rem', textAlign: 'center', borderRadius: '2.5rem' }}
+                 >
+                    <Lock size={48} color="var(--primary)" style={{ margin: '0 auto 2rem', opacity: 0.5 }} />
+                    <h3 className="outfit" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Terminal Data Encrypted</h3>
+                    <p style={{ color: 'var(--text-dim)', marginBottom: '2.5rem', maxWidth: '400px', margin: '0 auto 2.5rem' }}>Secure connection required to access real-time probabilistic vectors and AI insights.</p>
+                    <motion.button 
+                      className="cta-btn outfit" 
+                      style={{ margin: '0 auto', cursor: 'pointer' }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setIsAuthModalOpen(true)}
+                    >
+                      Establish Connection <Zap size={18} />
+                    </motion.button>
+                 </motion.div>
+               ) : loading ? (
                  <motion.div 
                    key="loading"
                    initial={{ opacity: 0 }}
                    animate={{ opacity: 1 }}
                    exit={{ opacity: 0 }}
-                   style={{ textAlign: 'center', padding: '6rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '2px' }}
+                   style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '6rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '2px' }}
                  >
-                   <Activity size={40} className="feature-icon" style={{ margin: '0 auto 1.5rem', display: 'block' }} />
+                   <Loader2 size={40} className="animate-spin" style={{ margin: '0 auto 1.5rem', display: 'block' }} />
                    INITIALIZING TELEMETRY...
                  </motion.div>
                ) : recommendations.length > 0 ? (
@@ -367,6 +490,8 @@ function App() {
                      className="rec-item outfit"
                      variants={itemVariants}
                      whileHover={{ x: 10, borderColor: 'rgba(0, 240, 160, 0.4)', background: 'rgba(0, 240, 160, 0.02)' }}
+                     onClick={() => showToast(`Monitoring extended signals for ${rec.symbol}`)}
+                     style={{ cursor: 'pointer' }}
                    >
                      <div className="symbol-badge">
                         <div className="symbol-avatar">{rec.symbol.substring(0,2)}</div>
@@ -389,12 +514,21 @@ function App() {
                      </div>
                    </motion.div>
                  ))
+               ) : error ? (
+                 <motion.div 
+                    key="error"
+                    variants={itemVariants}
+                    className="auth-error"
+                    style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center' }}
+                 >
+                   {error}
+                 </motion.div>
                ) : (
                  <motion.div 
                     key="empty"
                     variants={itemVariants}
                     className="glass-effect" 
-                    style={{ padding: '5rem', borderRadius: '2rem', textAlign: 'center', color: 'var(--text-dim)' }}
+                    style={{ gridColumn: '1 / -1', padding: '5rem', borderRadius: '2rem', textAlign: 'center', color: 'var(--text-dim)' }}
                  >
                    <Layers size={48} style={{ marginBottom: '1.5rem', opacity: 0.2 }} />
                    <p style={{ fontSize: '1.125rem' }}>No active signals detected for query "<strong>{search}</strong>"</p>
@@ -404,6 +538,11 @@ function App() {
            </motion.div>
         </motion.section>
       </div>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </div>
   )
 }
