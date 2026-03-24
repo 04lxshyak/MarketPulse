@@ -20,13 +20,20 @@ public class RecommendationService {
     private final RecommendationProducer recommendationProducer;
     private final StockRecommendationRepository repository;
     private final AiParserService aiParserService;
+    private final RAGService ragService;
 
     public void analyzeStock(StockEvent stock) {
         try {
             log.info("🔍 Analyzing stock: {}", stock.getSymbol());
 
-            String aiResponse = stockAnalysisService.analyze(stock);
+            // 1. Retrieve Historical Context via RAG
+            String contextPrefix = stock.getSymbol() + " current price: " + stock.getPrice();
+            String historicalContext = ragService.retrieveSimilarContext(stock.getSymbol(), contextPrefix);
 
+            // 2. Analyze with Gemini
+            String aiResponse = stockAnalysisService.analyze(stock, historicalContext);
+
+            // 3. Parse and Save
             StockRecommendation entity = aiParserService.parse(aiResponse);
 
             if ("UNKNOWN".equals(entity.getSymbol())) {
@@ -38,6 +45,10 @@ public class RecommendationService {
             repository.save(entity);
             log.info("✅ Saved recommendation to DB: symbol={}, action={}", entity.getSymbol(), entity.getRecommendation());
 
+            // 4. Store Embedding for Future RAG
+            ragService.storeEmbedding(entity);
+
+            // 5. Publish to Kafka
             RecommendationEvent event = new RecommendationEvent(
                     entity.getSymbol(),
                     entity.getRecommendation(),

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Entity
 @Data
-@Table(name = "stock_recommendations")
+@Table(name = "stock_recommendations", indexes = {@Index(columnList = "symbol")})
 public class StockRecommendation {
 
     @Id

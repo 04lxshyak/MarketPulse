@@ -17,21 +17,17 @@ public class AiParserService {
         try {
             System.out.println("AI RAW TEXT: " + aiText);
 
-            // Strip markdown code fences if present
-            String text = aiText.trim();
-            if (text.startsWith("```json")) {
-                text = text.substring(7);
-            } else if (text.startsWith("```")) {
-                text = text.substring(3);
+            // Robust JSON extraction using Regex
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\{.*\\}", java.util.regex.Pattern.DOTALL).matcher(aiText);
+            
+            String jsonText = aiText;
+            if (matcher.find()) {
+                jsonText = matcher.group(0);
             }
-            if (text.endsWith("```")) {
-                text = text.substring(0, text.length() - 3);
-            }
-            text = text.trim();
 
-            System.out.println("AI PARSED TEXT: " + text);
+            System.out.println("AI PARSED TEXT: " + jsonText);
 
-            return mapper.readValue(text, StockRecommendation.class);
+            return mapper.readValue(jsonText, StockRecommendation.class);
 
         } catch (Exception e) {
             System.out.println("❌ Error while parsing AI text: " + e.getMessage());

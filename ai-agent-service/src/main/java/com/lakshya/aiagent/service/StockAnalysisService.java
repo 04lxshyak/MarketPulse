@@ -11,7 +11,7 @@ public class StockAnalysisService {
     private final NewsService newsService;
     private final GeminiService geminiService;
 
-    public String analyze(StockEvent stock) {
+    public String analyze(StockEvent stock, String historicalContext) {
 
         try {
 
@@ -25,7 +25,8 @@ public class StockAnalysisService {
                     stock.getHigh(),
                     stock.getLow(),
                     stock.getVolume(),
-                    news
+                    news,
+                    historicalContext
             );
 
         } catch (Exception e) {

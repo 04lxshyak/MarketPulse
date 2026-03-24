@@ -5,9 +5,9 @@ spring:
   application:
     name: ai-agent-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/stock_db
-    username: postgres
-    password: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/stock_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:12345678}
 
   jpa:
     hibernate:
@@ -39,7 +39,12 @@ news:
   api:
     key: ${NEWS_API_KEY}
 
+jwt:
+  secret: mR9qZ2xWQnV4T3JkTnY1cHhFZ0s4QmF5YzJQd2RZa1pQeE5uT1VtWkRrPQ==
+  expiration: 3600000
+
 logging:
   level:
+    root: INFO
     com.lakshya.aiagent: DEBUG
-    org.springframework.kafka: WARN
+    org.springframework.kafka: INFO

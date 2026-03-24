@@ -22,56 +22,47 @@ public class GeminiService {
                                double high,
                                double low,
                                long volume,
-                               String news) {
+                               String news,
+                               String historicalContext) {
 
         try {
+            String safeNews = news != null ? news : "No relevant news found.";
+            String safeHistorical = historicalContext != null && !historicalContext.isBlank()
+                    ? historicalContext
+                    : "No relevant historical patterns found.";
 
-            String safeNews = news
-                    .replace("\"", "'")
-                    .replace("\n", " ")
-                    .replace("\r", " ");
+            String prompt = String.format(
+                "You are a professional stock market analyst AI.\n\n" +
+                "Analyze the following stock data, latest market news, and historical context.\n\n" +
+                "Return ONLY valid JSON:\n" +
+                "{\n" +
+                "  \"symbol\": \"%s\",\n" +
+                "  \"recommendation\": \"BUY | SELL | HOLD\",\n" +
+                "  \"sentiment\": \"POSITIVE | NEGATIVE | NEUTRAL\",\n" +
+                "  \"risk_level\": \"LOW | MEDIUM | HIGH\",\n" +
+                "  \"confidence\": <integer 0-100>,\n" +
+                "  \"reason\": \"<short explanation>\"\n" +
+                "}\n\n" +
+                "STOCK:\nSymbol: %s\nPrice: %.2f\nHigh: %.2f\nLow: %.2f\nVolume: %d\n\n" +
+                "NEWS:\n%s\n\n" +
+                "HISTORICAL CONTEXT:\n%s",
+                symbol, symbol, price, high, low, volume, safeNews, safeHistorical
+            );
 
-            String prompt = """
-                You are a professional stock market analyst AI.
+            // Robust JSON construction using Jackson
+            com.fasterxml.jackson.databind.node.ObjectNode root = mapper.createObjectNode();
+            com.fasterxml.jackson.databind.node.ArrayNode contents = root.putArray("contents");
+            com.fasterxml.jackson.databind.node.ObjectNode part = mapper.createObjectNode();
+            com.fasterxml.jackson.databind.node.ArrayNode parts = part.putArray("parts");
+            com.fasterxml.jackson.databind.node.ObjectNode textNode = mapper.createObjectNode();
+            textNode.put("text", prompt);
+            parts.add(textNode);
+            contents.add(part);
 
-                Analyze the following stock data and latest market news.
-
-                Return ONLY valid JSON:
-
-                {
-                  "symbol": "%s",
-                  "recommendation": "BUY | SELL | HOLD",
-                  "sentiment": "POSITIVE | NEGATIVE | NEUTRAL",
-                  "risk_level": "LOW | MEDIUM | HIGH",
-                  "confidence": 0,
-                  "reason": "Short explanation"
-                }
-
-                STOCK:
-                Symbol: %s
-                Price: %.2f
-                High: %.2f
-                Low: %.2f
-                Volume: %d
-
-                NEWS:
-                %s
-                """.formatted(symbol, symbol, price, high, low, volume, safeNews);
-
-            String json = """
-                {
-                  "contents": [
-                    {
-                      "parts": [
-                        {"text": "%s"}
-                      ]
-                    }
-                  ]
-                }
-                """.formatted(prompt.replace("\"", "\\\""));
+            String jsonPayload = mapper.writeValueAsString(root);
 
             RequestBody body = RequestBody.create(
-                    json,
+                    jsonPayload,
                     MediaType.parse("application/json")
             );
 
@@ -83,44 +74,74 @@ public class GeminiService {
             Response response = client.newCall(request).execute();
 
             if (response.body() != null) {
-
                 String raw = response.body().string();
-
-                // 🔥 DEBUG (IMPORTANT)
                 System.out.println("GEMINI RAW RESPONSE: " + raw);
 
-                JsonNode root = mapper.readTree(raw);
+                JsonNode respRoot = mapper.readTree(raw);
+                JsonNode candidates = respRoot.path("candidates");
 
-                JsonNode candidates = root.path("candidates");
-
-                // ✅ SAFE CHECK
                 if (!candidates.isArray() || candidates.size() == 0) {
                     System.out.println("❌ No candidates found in Gemini response");
                     return "AI_ERROR";
                 }
 
-                JsonNode first = candidates.get(0);
-                JsonNode parts = first.path("content").path("parts");
+                JsonNode respParts = candidates.get(0).path("content").path("parts");
 
-                // ✅ SAFE CHECK
-                if (!parts.isArray() || parts.size() == 0) {
+                if (!respParts.isArray() || respParts.size() == 0) {
                     System.out.println("❌ No parts found in Gemini response");
                     return "AI_ERROR";
                 }
 
-                String text = parts.get(0).path("text").asText();
-
-                // 🔥 DEBUG
-                System.out.println("GEMINI TEXT: " + text);
-
-                return text;
+                return respParts.get(0).path("text").asText();
             }
 
         } catch (Exception e) {
-            System.out.println("❌ Error in GeminiService");
-            e.printStackTrace();
+            System.out.println("❌ Error in GeminiService analyzeStock: " + e.getMessage());
         }
 
         return "AI_ERROR";
+    }
+
+    public float[] generateEmbedding(String text) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode root = mapper.createObjectNode();
+            com.fasterxml.jackson.databind.node.ObjectNode content = mapper.createObjectNode();
+            com.fasterxml.jackson.databind.node.ArrayNode parts = content.putArray("parts");
+            com.fasterxml.jackson.databind.node.ObjectNode textNode = mapper.createObjectNode();
+            textNode.put("text", text);
+            parts.add(textNode);
+            root.set("content", content);
+
+            String jsonPayload = mapper.writeValueAsString(root);
+
+            RequestBody body = RequestBody.create(
+                    jsonPayload,
+                    MediaType.parse("application/json")
+            );
+
+            Request request = new Request.Builder()
+                    .url("https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" + apiKey)
+                    .post(body)
+                    .build();
+
+            Response response = client.newCall(request).execute();
+
+            if (response.body() != null) {
+                String raw = response.body().string();
+                JsonNode respRoot = mapper.readTree(raw);
+                JsonNode valuesNode = respRoot.path("embedding").path("values");
+
+                if (valuesNode.isArray()) {
+                    float[] embedding = new float[valuesNode.size()];
+                    for (int i = 0; i < valuesNode.size(); i++) {
+                        embedding[i] = (float) valuesNode.get(i).asDouble();
+                    }
+                    return embedding;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("❌ Error in GeminiService generateEmbedding: " + e.getMessage());
+        }
+        return new float[0];
     }
 }

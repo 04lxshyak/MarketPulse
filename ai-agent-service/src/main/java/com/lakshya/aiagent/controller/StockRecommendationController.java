@@ -1,5 +1,6 @@
 package com.lakshya.aiagent.controller;
 
+import com.lakshya.aiagent.dto.PaginatedResponse;
 import com.lakshya.aiagent.model.StockRecommendation;
 import com.lakshya.aiagent.repository.StockRecommendationRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class StockRecommendationController {
     private final StockRecommendationRepository repository;
 
     @GetMapping
-    public Page<StockRecommendation> getRecommendations(
+    public PaginatedResponse<StockRecommendation> getRecommendations(
             @RequestParam(required = false) String symbol,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -30,11 +31,19 @@ public class StockRecommendationController {
                 : Sort.by(sortBy).ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
+        Page<StockRecommendation> resultPage;
 
         if (symbol != null && !symbol.isBlank()) {
-            return repository.findBySymbol(symbol.toUpperCase(), pageable);
+            resultPage = repository.findBySymbol(symbol.toUpperCase(), pageable);
+        } else {
+            resultPage = repository.findAll(pageable);
         }
 
-        return repository.findAll(pageable);
+        return new PaginatedResponse<>(
+                resultPage.getContent(),
+                resultPage.getTotalPages(),
+                resultPage.getTotalElements(),
+                resultPage.getNumber()
+        );
     }
 }

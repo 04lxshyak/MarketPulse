@@ -19,7 +19,7 @@ public class AIOrchestratorService {
 
             System.out.println("Starting AI analysis for " + stockEvent.getSymbol());
 
-            String aiResponse = stockAnalysisService.analyze(stockEvent);
+            String aiResponse = stockAnalysisService.analyze(stockEvent, "");
 
             RecommendationEvent recommendation = new RecommendationEvent(
                     stockEvent.getSymbol(),
