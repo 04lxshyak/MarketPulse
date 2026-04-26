@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { getToken, clearToken } from '../../utils/auth';
+import { clearToken } from '../../utils/auth';
 
 export const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getToken());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
   useEffect(() => {
     const handleUnauthorized = () => {
