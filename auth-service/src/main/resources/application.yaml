@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
+    url: jdbc:postgresql://localhost:5434/auth_db
     username: postgres
-    password: postgres
+    password: 12345678
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,3 +19,17 @@ spring:
 jwt:
   secret: mR9qZ2xWQnV4T3JkTnY1cHhFZ0s4QmF5YzJQd2RZa1pQeE5uT1VtWkRrPQ==
   expiration: 3600000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.web.FilterChainProxy: DEBUG
