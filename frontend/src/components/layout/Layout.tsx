@@ -15,9 +15,9 @@ export const Layout = ({ children, email }: { children: React.ReactNode, email?:
   return (
     <div className="min-h-screen flex flex-col">
       <header className="h-16 border-b border-outline-variant/20 bg-surface-container-low/50 backdrop-blur-md flex items-center justify-between px-6 z-50 stick top-0">
-        <div className="flex items-center space-x-2 text-primary cursor-pointer" onClick={() => navigate('/dashboard')}>
-           <Activity className="h-6 w-6" />
-           <span className="font-bold text-lg tracking-tight text-white">Market<span className="text-primary">Pulse</span></span>
+        <div className="flex items-center space-x-3 text-primary cursor-pointer" onClick={() => navigate('/dashboard')}>
+           <img src="/logo.png" alt="MarketPulse Logo" className="h-8 w-auto object-contain" />
+           <span className="font-bold text-xl tracking-tight text-white">Market<span className="text-primary">Pulse</span></span>
         </div>
         
         {email && (
