@@ -1,7 +1,7 @@
 package com.lakshya.aiagent.kafka;
 
 import com.lakshya.aiagent.model.StockEvent;
-import com.lakshya.aiagent.service.RecommendationService;
+import com.lakshya.aiagent.service.AIOrchestratorService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,11 +14,11 @@ public class StockConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(StockConsumer.class);
 
-    private final RecommendationService recommendationService;
+    private final AIOrchestratorService orchestratorService;
 
     @KafkaListener(topics = "stock-price-updates", groupId = "ai-agent-group")
     public void consume(StockEvent event) {
         log.info("📥 Received stock event: symbol={}, price={}", event.getSymbol(), event.getPrice());
-        recommendationService.analyzeStock(event);
+        orchestratorService.processStockEvent(event);
     }
 }

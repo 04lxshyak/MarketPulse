@@ -48,3 +48,12 @@ logging:
     root: INFO
     com.lakshya.aiagent: DEBUG
     org.springframework.kafka: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
