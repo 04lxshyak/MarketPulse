@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchRecommendations } from '../services/recommendations';
 import { fetchAllStocks, fetchStockBySymbol } from '../services/stocks';
 import { getCurrentUser } from '../services/auth';
-
+import { submitAiQuery } from '../services/ai';
 export const useRecommendations = (
   symbol?: string, 
   page = 0, 
@@ -40,5 +40,11 @@ export const useCurrentUser = () => {
     queryFn: getCurrentUser,
     retry: false, // Don't retry on 401
     staleTime: Infinity,
+  });
+};
+
+export const useAIQuery = () => {
+  return useMutation({
+    mutationFn: submitAiQuery
   });
 };

@@ -7,12 +7,17 @@ import { formatTime } from '../utils/formatters';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { motion } from 'framer-motion';
+
+import { AiChatModal } from '../components/ui/AiChatModal';
+import { Sparkles } from 'lucide-react';
 
 export const Dashboard = () => {
   const { data: user } = useCurrentUser();
   const [symbolSearch, setSymbolSearch] = useState('');
   const [activeSymbol, setActiveSymbol] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(0);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { data, isLoading } = useRecommendations(activeSymbol, page, 10, 'timestamp', 'desc', 10000);
 
@@ -48,20 +53,32 @@ export const Dashboard = () => {
          <LiveTicker items={recs.slice(0, 10).map(r => ({ symbol: r.symbol, type: r.recommendation }))} />
       )}
       
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard title="Total Signals" value={total} subtext="Tracked in current filter" />
-          <KPICard title="Buy Sentiment" value={`${buyPct}%`} subtext={<span className="text-buy">Based on latest page</span>} />
-          <KPICard title="Sell Pressure" value={`${sellPct}%`} subtext={<span className="text-sell">Based on latest page</span>} />
-          <KPICard title="Avg Confidence" value={`${avgConf}%`} subtext={<ConfidenceRing value={avgConf} />} />
+          {[ 
+            { title: 'Total Signals', value: total, subtext: 'Tracked in current filter' },
+            { title: 'Buy Sentiment', value: `${buyPct}%`, subtext: <span className="text-buy">Based on latest page</span> },
+            { title: 'Sell Pressure', value: `${sellPct}%`, subtext: <span className="text-sell">Based on latest page</span> },
+            { title: 'Avg Confidence', value: `${avgConf}%`, subtext: <ConfidenceRing value={avgConf} /> },
+          ].map((item, idx) => (
+            <motion.div
+              key={item.title}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.35 }}
+              transition={{ duration: 0.4, delay: idx * 0.06 }}
+            >
+              <KPICard title={item.title} value={item.value} subtext={item.subtext} />
+            </motion.div>
+          ))}
         </div>
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold">Latest Recommendations</h2>
+                  <h2 className="text-lg md:text-xl font-semibold">Latest Recommendations</h2>
               <form onSubmit={handleSearch} className="flex gap-2">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-outline-variant" />
@@ -103,7 +120,7 @@ export const Dashboard = () => {
                            <SentimentIndicator type={rec.sentiment} />
                         </td>
                         <td className="px-4 py-4 flex items-center gap-2">
-                          <div className="w-24 h-2 bg-surface-container-lowest rounded-full overflow-hidden">
+                          <div className="w-24 h-2 bg-surface-container-low rounded-full overflow-hidden">
                             <div className="h-full bg-primary" style={{ width: `${rec.confidence}%` }} />
                           </div>
                           <span className="text-xs">{rec.confidence}%</span>
@@ -175,7 +192,17 @@ export const Dashboard = () => {
             </Card>
           </div>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Floating AI Action Button */}
+      <button
+        onClick={() => setIsAiModalOpen(true)}
+        className="fixed bottom-8 right-8 p-4 bg-primary text-white rounded-full shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 transition-all z-30 group"
+      >
+        <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
+      </button>
+
+      <AiChatModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} />
     </Layout>
   );
 };

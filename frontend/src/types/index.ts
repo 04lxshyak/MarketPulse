@@ -42,3 +42,18 @@ export interface RegisterRequest {
   email: string;
   password: string;
 }
+
+export interface UserQueryRequest {
+  query: string;
+  symbol?: string;
+}
+
+export interface UserQueryResponse {
+  intent: 'NEWS' | 'TECHNICALS' | 'GENERAL_KNOWLEDGE' | 'ERROR';
+  symbol: string;
+  answer: string;
+  sentiment: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+  recommendation: 'BUY' | 'SELL' | 'HOLD';
+  confidence: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+}

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sparkles, X, BrainCircuit, Activity, BookOpen, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAIQuery } from '../../hooks/queries';
 import { RecommendationBadge, SentimentIndicator } from './DomainComponents';
+import { BrandLogo } from './BrandLogo';
 
 export const AiChatModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [query, setQuery] = useState('');
@@ -49,9 +50,7 @@ export const AiChatModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               {/* Header */}
               <div className="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center bg-gradient-to-r from-surface-container-low to-transparent">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/20 rounded-xl">
-                    <Sparkles className="w-5 h-5 text-primary" />
-                  </div>
+                  <BrandLogo compact className="gap-2" />
                   <div>
                     <h2 className="text-lg font-semibold text-white tracking-wide">MarketPulse AI Agent</h2>
                     <p className="text-xs text-indigo-200/60">Powered by Gemini</p>
@@ -135,8 +134,8 @@ export const AiChatModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           {(response.intent === 'TECHNICALS' || response.intent === 'NEWS') && (
                             <React.Fragment>
                               <div className="h-3 w-px bg-outline-variant/30" />
-                              <RecommendationBadge type={response.recommendation as any} />
-                              <SentimentIndicator type={response.sentiment as any} />
+                              <RecommendationBadge type={response.recommendation} />
+                              <SentimentIndicator type={response.sentiment} />
                               <div className="ml-auto flex items-center gap-1.5 text-xs text-indigo-200/60 bg-surface-container-highest px-2 py-1 rounded">
                                 <Activity className="w-3 h-3" />
                                 {response.confidence}% Confidence

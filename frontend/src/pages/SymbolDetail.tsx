@@ -7,6 +7,7 @@ import { RecommendationBadge, ConfidenceRing } from '../components/ui/DomainComp
 import { formatCurrency, formatNumber, formatTime, formatDate } from '../utils/formatters';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const SymbolDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -18,14 +19,14 @@ export const SymbolDetail = () => {
 
   return (
     <Layout>
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
         <Link to="/dashboard" className="inline-flex items-center text-sm text-outline-variant hover:text-indigo-50 transition-colors mb-4">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Dashboard
         </Link>
         
         <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-end mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white tracking-tight">{symbol}</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">{symbol}</h1>
             <p className="text-indigo-200/60 mt-1">Real-time artificial intelligence assessment</p>
           </div>
           {latestRec && (
@@ -44,6 +45,7 @@ export const SymbolDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
            <Card className="lg:col-span-1 space-y-6">
              <h3 className="text-sm uppercase tracking-wider text-outline-variant">Market Data</h3>
              {isStockLoading ? (
@@ -71,7 +73,9 @@ export const SymbolDetail = () => {
                </div>
              )}
            </Card>
+           </motion.div>
 
+           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
            <Card className="lg:col-span-3">
              <h3 className="text-sm uppercase tracking-wider text-outline-variant mb-6">Confidence Target History</h3>
              <div className="h-72">
@@ -101,6 +105,7 @@ export const SymbolDetail = () => {
                )}
              </div>
            </Card>
+           </motion.div>
         </div>
         
         <Card>

@@ -57,8 +57,8 @@ export const ConfidenceRing = ({ value }: { value: number }) => {
 };
 
 export const KPICard = ({ title, value, subtext }: { title: string, value: React.ReactNode, subtext?: React.ReactNode }) => (
-  <div className="glass-card flex flex-col p-5 bg-gradient-to-b from-surface-container-high/60 to-surface-container-lowest/60">
-    <span className="text-xs uppercase tracking-[0.05em] text-outline text-indigo-200/60 mb-2">{title}</span>
+  <div className="glass-card flex flex-col p-5 bg-gradient-to-b from-surface-container-high/60 to-surface-container-low/60">
+    <span className="text-xs uppercase tracking-[0.05em] text-outline-variant text-indigo-200/60 mb-2">{title}</span>
     <div className="text-3xl font-light tracking-tight text-white">{value}</div>
     {subtext && <div className="mt-2 text-xs text-indigo-200/40">{subtext}</div>}
   </div>
@@ -98,7 +98,7 @@ export const SkeletonLoader = ({ className }: { className?: string }) => (
 
 export const LiveTicker = ({ items }: { items: { symbol: string, type: 'BUY'|'SELL'|'HOLD' }[] }) => {
   return (
-    <div className="w-full bg-surface-container-lowest/60 backdrop-blur-xl border-b border-outline-variant/20 h-10 flex items-center overflow-hidden whitespace-nowrap sticky top-0 z-40 relative">
+    <div className="w-full bg-surface-container-low/60 backdrop-blur-xl border-b border-outline-variant/20 h-10 flex items-center overflow-hidden whitespace-nowrap sticky top-0 z-40 relative">
       <div className="animate-[ticker_30s_linear_infinite] flex items-center space-x-8 px-4">
         {[...items, ...items, ...items].map((item, i) => (
           <div key={i} className="flex items-center space-x-2 shrink-0">
