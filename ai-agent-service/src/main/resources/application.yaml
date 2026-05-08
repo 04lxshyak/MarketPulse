@@ -15,7 +15,7 @@ spring:
     show-sql: true
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
 
     consumer:
       group-id: ai-agent-group
@@ -34,10 +34,10 @@ spring:
 
 gemini:
   api:
-    key: ${GEMINI_API_KEY}
+    key: ${GEMINI_API_KEY:}
 news:
   api:
-    key: ${NEWS_API_KEY}
+    key: ${NEWS_API_KEY:}
 
 jwt:
   secret: mR9qZ2xWQnV4T3JkTnY1cHhFZ0s4QmF5YzJQd2RZa1pQeE5uT1VtWkRrPQ==
