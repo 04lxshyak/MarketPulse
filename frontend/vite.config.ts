@@ -17,6 +17,10 @@ export default defineConfig({
         target: 'http://localhost:8083',
         changeOrigin: true,
       },
+      '/api/ai': {
+        target: 'http://localhost:8083',
+        changeOrigin: true,
+      },
     },
   },
 });
