@@ -4,6 +4,7 @@ import com.lakshya.aiagent.kafka.RecommendationProducer;
 import com.lakshya.aiagent.model.RecommendationEvent;
 import com.lakshya.aiagent.model.StockEvent;
 import com.lakshya.aiagent.model.StockRecommendation;
+import com.lakshya.aiagent.model.TechnicalSnapshot;
 import com.lakshya.aiagent.repository.StockRecommendationRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -21,17 +22,19 @@ public class RecommendationService {
     private final StockRecommendationRepository repository;
     private final AiParserService aiParserService;
     private final RAGService ragService;
+    private final TechnicalFeatureService technicalFeatureService;
 
     public void analyzeStock(StockEvent stock) {
         try {
             log.info("🔍 Analyzing stock: {}", stock.getSymbol());
 
-            // 1. Retrieve Historical Context via RAG
-            String contextPrefix = stock.getSymbol() + " current price: " + stock.getPrice();
+            // 1. Retrieve historical market setups via RAG
+            TechnicalSnapshot technicalSnapshot = technicalFeatureService.buildSnapshot(stock);
+            String contextPrefix = technicalFeatureService.toEmbeddingText(technicalSnapshot);
             String historicalContext = ragService.retrieveSimilarContext(stock.getSymbol(), contextPrefix);
 
             // 2. Analyze with Gemini
-            String aiResponse = stockAnalysisService.analyze(stock, historicalContext);
+            String aiResponse = stockAnalysisService.analyze(stock, technicalSnapshot, historicalContext);
 
             // 3. Parse and Save
             StockRecommendation entity = aiParserService.parse(aiResponse);
@@ -45,8 +48,8 @@ public class RecommendationService {
             repository.save(entity);
             log.info("✅ Saved recommendation to DB: symbol={}, action={}", entity.getSymbol(), entity.getRecommendation());
 
-            // 4. Store Embedding for Future RAG
-            ragService.storeEmbedding(entity);
+            // 4. Store recommendation plus market setup for future RAG
+            ragService.storeEmbedding(entity, technicalSnapshot);
 
             // 5. Publish to Kafka
             RecommendationEvent event = new RecommendationEvent(

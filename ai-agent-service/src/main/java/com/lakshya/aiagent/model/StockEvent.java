@@ -12,5 +12,6 @@ public class StockEvent {
     private double high;
     private double low;
     private long volume;
+    private double previousClose;
 
 }

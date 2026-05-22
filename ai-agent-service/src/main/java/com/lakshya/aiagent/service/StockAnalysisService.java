@@ -1,6 +1,7 @@
 package com.lakshya.aiagent.service;
 
 import com.lakshya.aiagent.model.StockEvent;
+import com.lakshya.aiagent.model.TechnicalSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -11,13 +12,20 @@ public class StockAnalysisService {
     private final NewsService newsService;
     private final GeminiService geminiService;
 
-    public String analyze(StockEvent stock, String historicalContext) {
+    public String analyze(StockEvent stock, TechnicalSnapshot technicalSnapshot, String historicalContext) {
 
         try {
 
             String news = newsService.getNews(stock.getSymbol());
 
             System.out.println("Fetched news for " + stock.getSymbol());
+            String enrichedHistoricalContext = String.format(
+                    "CURRENT TECHNICAL SETUP:\n%s\n\nSIMILAR HISTORICAL SETUPS:\n%s",
+                    technicalSnapshot.getSummary(),
+                    historicalContext == null || historicalContext.isBlank()
+                            ? "No similar historical setups available."
+                            : historicalContext
+            );
 
             return geminiService.analyzeStock(
                     stock.getSymbol(),
@@ -26,7 +34,7 @@ public class StockAnalysisService {
                     stock.getLow(),
                     stock.getVolume(),
                     news,
-                    historicalContext
+                    enrichedHistoricalContext
             );
 
         } catch (Exception e) {
