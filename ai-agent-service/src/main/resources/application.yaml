@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: ai-agent-service
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:ai-agent-service/.env[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5434/stock_db}
     username: ${DB_USER:postgres}
@@ -38,6 +42,7 @@ gemini:
 news:
   api:
     key: ${NEWS_API_KEY:}
+    base-url: ${NEWS_API_BASE_URL:https://api.marketaux.com/v1/news/all}
 
 jwt:
   secret: mR9qZ2xWQnV4T3JkTnY1cHhFZ0s4QmF5YzJQd2RZa1pQeE5uT1VtWkRrPQ==

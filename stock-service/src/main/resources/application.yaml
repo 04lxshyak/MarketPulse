@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: stock-service
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:stock-service/.env[.properties]
 
   datasource:
     url: jdbc:postgresql://localhost:5434/stock_db

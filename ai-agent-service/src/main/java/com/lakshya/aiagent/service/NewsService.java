@@ -10,19 +10,27 @@ public class NewsService {
     @Value("${news.api.key}")
     private String apiKey;
 
+    @Value("${news.api.base-url}")
+    private String baseUrl;
+
     private final OkHttpClient client = new OkHttpClient();
 
     public String getNews(String symbol) {
 
         try {
+            if (apiKey == null || apiKey.isBlank()) {
+                return "";
+            }
 
-            String company = symbol.replace(".NS","");
-
-            String url =
-                    "https://newsapi.org/v2/everything?q="
-                            + company
-                            + "&sortBy=publishedAt&apiKey="
-                            + apiKey;
+            String normalizedSymbol = normalizeSymbol(symbol);
+            HttpUrl url = HttpUrl.parse(baseUrl)
+                    .newBuilder()
+                    .addQueryParameter("api_token", apiKey)
+                    .addQueryParameter("symbols", normalizedSymbol)
+                    .addQueryParameter("language", "en")
+                    .addQueryParameter("limit", "5")
+                    .addQueryParameter("must_have_entities", "true")
+                    .build();
 
             Request request = new Request.Builder()
                     .url(url)
@@ -39,5 +47,12 @@ public class NewsService {
         }
 
         return "";
+    }
+
+    private String normalizeSymbol(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            return "";
+        }
+        return symbol.trim().toUpperCase();
     }
 }
