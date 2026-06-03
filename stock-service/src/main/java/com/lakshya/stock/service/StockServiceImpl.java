@@ -4,82 +4,89 @@ import com.lakshya.stock.entity.Stock;
 import com.lakshya.stock.kafka.StockProducer;
 import com.lakshya.stock.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class StockServiceImpl implements StockService {
 
     private final StockRepository stockRepository;
-    private final RestTemplate restTemplate;
     private final StockProducer stockProducer;
 
     @Override
     public List<Stock> getAllStocks() {
-        return stockRepository.findAll();
+        return stockRepository.findLatestPerSymbol();
+    }
+
+    @Override
+    public Stock getLatestStock(String symbol) {
+        return stockRepository.findTopBySymbolOrderByUpdatedAtDesc(normalizeSymbol(symbol))
+                .orElseThrow(() -> new RuntimeException("Stock data not found for symbol: " + symbol));
     }
 
     @Override
     public Stock saveStock(Stock stock) {
         stock.setUpdatedAt(LocalDateTime.now());
-        return stockRepository.save(stock);
+        Stock savedStock = stockRepository.save(stock);
+        stockProducer.sendStockUpdate(savedStock);
+        return savedStock;
     }
 
     @Override
-    public Stock fetchStockFromYahoo(String symbol) {
+    @Transactional
+    public Stock ingestTrade(String symbol, double price, long volume, Long eventTimestamp) {
+        String normalizedSymbol = normalizeSymbol(symbol);
+        LocalDateTime updatedAt = resolveUpdatedAt(eventTimestamp);
+        Stock latest = stockRepository.findTopBySymbolOrderByUpdatedAtDesc(normalizedSymbol).orElse(null);
+        boolean sameTradingDay = latest != null
+                && latest.getUpdatedAt() != null
+                && latest.getUpdatedAt().toLocalDate().equals(updatedAt.toLocalDate());
 
-        String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol;
-
-        // Add headers to mimic browser request
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", "Mozilla/5.0");
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                entity,
-                Map.class
-        );
-
-        Map body = response.getBody();
-
-        Map chart = (Map) body.get("chart");
-        List result = (List) chart.get("result");
-        Map resultMap = (Map) result.get(0);
-
-        Map meta = (Map) resultMap.get("meta");
-
-        double price = ((Number) meta.get("regularMarketPrice")).doubleValue();
-        double high = ((Number) meta.get("regularMarketDayHigh")).doubleValue();
-        double low = ((Number) meta.get("regularMarketDayLow")).doubleValue();
-        long volume = ((Number) meta.get("regularMarketVolume")).longValue();
-        double previousClose = ((Number) meta.get("previousClose")).doubleValue();
+        double previousClose = resolvePreviousClose(latest, price, sameTradingDay);
+        double high = sameTradingDay ? Math.max(latest.getHigh(), price) : price;
+        double low = sameTradingDay && latest.getLow() > 0 ? Math.min(latest.getLow(), price) : price;
+        long normalizedVolume = Math.max(volume, 0);
+        long cumulativeVolume = sameTradingDay ? latest.getVolume() + normalizedVolume : normalizedVolume;
 
         Stock stock = Stock.builder()
-                .symbol(symbol)
+                .symbol(normalizedSymbol)
                 .price(price)
                 .high(high)
                 .low(low)
-                .volume(volume)
+                .volume(cumulativeVolume)
                 .previousClose(previousClose)
-                .updatedAt(LocalDateTime.now())
+                .updatedAt(updatedAt)
                 .build();
 
         Stock savedStock = stockRepository.save(stock);
-
         stockProducer.sendStockUpdate(savedStock);
-
         return savedStock;
+    }
+
+    private String normalizeSymbol(String symbol) {
+        return symbol == null ? "" : symbol.trim().toUpperCase();
+    }
+
+    private LocalDateTime resolveUpdatedAt(Long eventTimestamp) {
+        if (eventTimestamp == null || eventTimestamp <= 0) {
+            return LocalDateTime.now();
+        }
+        return LocalDateTime.ofInstant(Instant.ofEpochMilli(eventTimestamp), ZoneId.systemDefault());
+    }
+
+    private double resolvePreviousClose(Stock latest, double price, boolean sameTradingDay) {
+        if (latest == null) {
+            return price;
+        }
+        if (sameTradingDay && latest.getPreviousClose() > 0) {
+            return latest.getPreviousClose();
+        }
+        return latest.getPrice();
     }
 }

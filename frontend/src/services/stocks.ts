@@ -7,6 +7,6 @@ export const fetchAllStocks = async (): Promise<Stock[]> => {
 };
 
 export const fetchStockBySymbol = async (symbol: string): Promise<Stock> => {
-  const response = await api.get<Stock>(`/stocks/fetch/${symbol}`);
+  const response = await api.get<Stock>(`/stocks/${symbol}`);
   return response.data;
 };

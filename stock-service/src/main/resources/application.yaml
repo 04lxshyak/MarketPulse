@@ -32,3 +32,11 @@ management:
     web:
       exposure:
         include: health,info
+
+market:
+  websocket:
+    enabled: ${MARKET_WS_ENABLED:true}
+    url: ${MARKET_WS_URL:wss://ws.finnhub.io}
+    token: ${FINNHUB_API_KEY:}
+    symbols: ${MARKET_WS_SYMBOLS:AAPL,MSFT,NVDA,TSLA}
+    reconnect-delay-ms: ${MARKET_WS_RECONNECT_DELAY_MS:5000}

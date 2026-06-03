@@ -19,8 +19,8 @@ public class StockController {
         return stockService.getAllStocks();
     }
 
-    @GetMapping("/fetch/{symbol}")
-    public Stock fetchStock(@PathVariable String symbol) {
-        return stockService.fetchStockFromYahoo(symbol);
+    @GetMapping("/{symbol}")
+    public Stock getLatestStock(@PathVariable String symbol) {
+        return stockService.getLatestStock(symbol);
     }
 }

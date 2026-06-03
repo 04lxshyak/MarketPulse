@@ -7,7 +7,9 @@ public interface StockService {
 
     List<Stock> getAllStocks();
 
+    Stock getLatestStock(String symbol);
+
     Stock saveStock(Stock stock);
 
-    Stock fetchStockFromYahoo(String symbol);
+    Stock ingestTrade(String symbol, double price, long volume, Long eventTimestamp);
 }
