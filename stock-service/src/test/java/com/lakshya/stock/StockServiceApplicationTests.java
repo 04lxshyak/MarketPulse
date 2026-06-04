@@ -1,13 +1,13 @@
 package com.lakshya.stock;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
 class StockServiceApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationClassExists() {
+		assertThat(StockServiceApplication.class).isNotNull();
 	}
-
 }

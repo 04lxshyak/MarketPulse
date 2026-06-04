@@ -1,5 +1,6 @@
 package com.lakshya.aiagent.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -18,6 +19,7 @@ public class StockRecommendation {
 
     private String sentiment;
 
+    @JsonProperty("risk_level")
     @Column(name = "risk_level")
     private String riskLevel;
 
