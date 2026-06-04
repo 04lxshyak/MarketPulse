@@ -44,3 +44,6 @@ market:
     token: ${FINNHUB_API_KEY:}
     symbols: ${MARKET_WS_SYMBOLS:AAPL,MSFT,NVDA,TSLA}
     reconnect-delay-ms: ${MARKET_WS_RECONNECT_DELAY_MS:5000}
+  signals:
+    cooldown-ms: ${MARKET_SIGNAL_COOLDOWN_MS:60000}
+    price-change-threshold-percent: ${MARKET_SIGNAL_PRICE_CHANGE_THRESHOLD_PERCENT:0.5}

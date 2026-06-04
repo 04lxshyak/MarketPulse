@@ -8,6 +8,8 @@ MarketPulse is an AI-powered stock recommendation system that ingests live marke
 - Spring Boot microservice architecture.
 - JWT-based authentication.
 - WebSocket-based stock data ingestion.
+- Selective background AI processing to avoid running inference on every tick.
+- User-triggered AI analysis for specific stocks.
 - Apache Kafka event pipeline for asynchronous processing.
 - PostgreSQL persistence.
 - pgvector-powered semantic retrieval for RAG.
@@ -120,7 +122,7 @@ Responsibilities:
 - Subscribe to configured stock symbols.
 - Convert incoming trades into stock snapshots.
 - Store latest stock data in PostgreSQL.
-- Publish stock updates to Kafka.
+- Publish only meaningful stock signals to Kafka.
 
 Main APIs:
 
@@ -136,6 +138,8 @@ Kafka topic produced:
 ```text
 stock-price-updates
 ```
+
+The stock service stores every incoming WebSocket tick as a stock snapshot, but it does not publish every tick to Kafka. A lightweight signal detector applies a per-symbol cooldown and price-movement threshold before publishing background AI events. This keeps the AI service from being overloaded by noisy market ticks.
 
 ### AI Agent Service
 
@@ -154,6 +158,7 @@ localhost:8083
 Responsibilities:
 
 - Consume stock update events from Kafka.
+- Run user-triggered stock analysis on demand.
 - Build a technical snapshot from the current stock movement.
 - Retrieve similar historical market setups using pgvector.
 - Fetch related market news.
@@ -167,6 +172,7 @@ Main APIs:
 ```text
 GET  /api/recommendations
 POST /api/ai/query
+POST /api/ai/analyze/{symbol}
 GET  /api/ai/health
 ```
 
@@ -204,6 +210,43 @@ Generate recommendation
    v
 Store recommendation + embedding for future RAG
 ```
+
+## AI Processing Strategy
+
+MarketPulse separates continuous data ingestion from expensive AI inference.
+
+```text
+Every WebSocket tick
+   |
+   v
+Save stock snapshot
+```
+
+Background AI analysis runs selectively:
+
+```text
+Meaningful price movement + cooldown passed
+   |
+   v
+Publish Kafka event
+   |
+   v
+AI Agent generates recommendation
+```
+
+User-triggered analysis runs on demand:
+
+```text
+User clicks Analyze
+   |
+   v
+AI Agent loads latest stock snapshot
+   |
+   v
+RAG + news + Gemini recommendation
+```
+
+This keeps the system near real-time while avoiding unnecessary Gemini calls for every small tick.
 
 The technical snapshot includes values such as:
 
@@ -251,6 +294,8 @@ MARKET_WS_ENABLED=true
 MARKET_WS_URL=wss://ws.finnhub.io
 MARKET_WS_SYMBOLS=AAPL,MSFT,NVDA,TSLA
 MARKET_WS_RECONNECT_DELAY_MS=5000
+MARKET_SIGNAL_COOLDOWN_MS=60000
+MARKET_SIGNAL_PRICE_CHANGE_THRESHOLD_PERCENT=0.5
 KAFKA_BOOTSTRAP_SERVERS=localhost:19092
 ```
 

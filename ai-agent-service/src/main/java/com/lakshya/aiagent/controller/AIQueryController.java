@@ -2,6 +2,7 @@ package com.lakshya.aiagent.controller;
 
 import com.lakshya.aiagent.dto.UserQueryRequest;
 import com.lakshya.aiagent.dto.UserQueryResponse;
+import com.lakshya.aiagent.model.StockRecommendation;
 import com.lakshya.aiagent.service.AIOrchestratorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,11 @@ public class AIQueryController {
     public ResponseEntity<UserQueryResponse> query(@RequestBody UserQueryRequest request) {
         UserQueryResponse response = orchestratorService.handleUserQuery(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/analyze/{symbol}")
+    public ResponseEntity<StockRecommendation> analyzeSymbol(@PathVariable String symbol) {
+        return ResponseEntity.ok(orchestratorService.analyzeLatestSymbol(symbol));
     }
 
     @GetMapping("/health")

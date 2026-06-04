@@ -18,6 +18,7 @@ public class StockServiceImpl implements StockService {
 
     private final StockRepository stockRepository;
     private final StockProducer stockProducer;
+    private final StockSignalService stockSignalService;
 
     @Override
     public List<Stock> getAllStocks() {
@@ -34,7 +35,9 @@ public class StockServiceImpl implements StockService {
     public Stock saveStock(Stock stock) {
         stock.setUpdatedAt(LocalDateTime.now());
         Stock savedStock = stockRepository.save(stock);
-        stockProducer.sendStockUpdate(savedStock);
+        if (stockSignalService.shouldPublish(null, savedStock)) {
+            stockProducer.sendStockUpdate(savedStock);
+        }
         return savedStock;
     }
 
@@ -65,7 +68,9 @@ public class StockServiceImpl implements StockService {
                 .build();
 
         Stock savedStock = stockRepository.save(stock);
-        stockProducer.sendStockUpdate(savedStock);
+        if (stockSignalService.shouldPublish(latest, savedStock)) {
+            stockProducer.sendStockUpdate(savedStock);
+        }
         return savedStock;
     }
 

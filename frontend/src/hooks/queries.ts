@@ -1,8 +1,9 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { fetchRecommendations } from '../services/recommendations';
 import { fetchAllStocks, fetchStockBySymbol } from '../services/stocks';
 import { getCurrentUser } from '../services/auth';
-import { submitAiQuery } from '../services/ai';
+import { analyzeSymbol, submitAiQuery } from '../services/ai';
 export const useRecommendations = (
   symbol?: string, 
   page = 0, 
@@ -46,5 +47,21 @@ export const useCurrentUser = () => {
 export const useAIQuery = () => {
   return useMutation({
     mutationFn: submitAiQuery
+  });
+};
+
+export const useAnalyzeSymbol = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: analyzeSymbol,
+    onSuccess: (recommendation) => {
+      queryClient.invalidateQueries({ queryKey: ['recommendations'] });
+      queryClient.invalidateQueries({ queryKey: ['stock', recommendation.symbol] });
+      toast.success(`Analysis completed for ${recommendation.symbol}`);
+    },
+    onError: () => {
+      toast.error('AI analysis failed. Try again after fresh stock data arrives.');
+    },
   });
 };

@@ -1,18 +1,19 @@
 
 import { useParams, Link } from 'react-router-dom';
-import { useSymbolData, useRecommendations } from '../hooks/queries';
+import { useAnalyzeSymbol, useSymbolData, useRecommendations } from '../hooks/queries';
 import { Layout } from '../components/layout/Layout';
-import { Card } from '../components/ui/Core';
+import { Button, Card } from '../components/ui/Core';
 import { RecommendationBadge, ConfidenceRing } from '../components/ui/DomainComponents';
 import { formatCurrency, formatNumber, formatTime, formatDate } from '../utils/formatters';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const SymbolDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
   const { data: stock, isLoading: isStockLoading } = useSymbolData(symbol || '', 15000);
   const { data: recsObj, isLoading: isRecsLoading } = useRecommendations(symbol, 0, 50, 'timestamp', 'asc');
+  const analyzeMutation = useAnalyzeSymbol();
   
   const recommendations = recsObj?.content || [];
   const latestRec = recommendations.length > 0 ? recommendations[recommendations.length - 1] : null;
@@ -29,8 +30,17 @@ export const SymbolDetail = () => {
             <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">{symbol}</h1>
             <p className="text-indigo-200/60 mt-1">Real-time artificial intelligence assessment</p>
           </div>
-          {latestRec && (
-             <div className="flex items-center gap-4 bg-surface-container-high/50 px-6 py-3 rounded-2xl border border-outline-variant/20 backdrop-blur-xl">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <Button
+              className="gap-2"
+              disabled={!symbol || analyzeMutation.isPending}
+              onClick={() => symbol && analyzeMutation.mutate(symbol)}
+            >
+              <Sparkles className="h-4 w-4" />
+              {analyzeMutation.isPending ? 'Analyzing' : 'Run AI Analysis'}
+            </Button>
+            {latestRec && (
+             <div className="flex items-center gap-4 bg-surface-container-high/50 px-6 py-3 rounded-md border border-outline-variant/20 backdrop-blur-xl">
                <div className="flex flex-col">
                  <span className="text-xs uppercase text-indigo-200/60 mb-1">Current Stance</span>
                  <RecommendationBadge type={latestRec.recommendation} />
@@ -41,7 +51,8 @@ export const SymbolDetail = () => {
                  <ConfidenceRing value={latestRec.confidence} />
                </div>
              </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

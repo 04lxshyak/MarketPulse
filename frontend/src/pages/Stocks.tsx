@@ -1,13 +1,15 @@
 
-import { useStocks } from '../hooks/queries';
+import { useAnalyzeSymbol, useStocks } from '../hooks/queries';
 import { Layout } from '../components/layout/Layout';
-import { Card } from '../components/ui/Core';
+import { Button, Card } from '../components/ui/Core';
 import { Link } from 'react-router-dom';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 import { motion } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
 
 export const Stocks = () => {
   const { data: stocks, isLoading } = useStocks();
+  const analyzeMutation = useAnalyzeSymbol();
 
   return (
     <Layout>
@@ -22,15 +24,16 @@ export const Stocks = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {stocks?.map((stock, idx) => (
-              <Link to={`/symbol/${stock.symbol}`} key={stock.symbol}>
-                <motion.div
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.4, delay: idx * 0.02 }}
-                  whileHover={{ y: -4 }}
-                >
-                <Card className="hover:bg-surface-container-high/60 transition-all cursor-pointer group border-white/10">
+              <motion.div
+                key={stock.symbol}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.4, delay: idx * 0.02 }}
+                whileHover={{ y: -4 }}
+              >
+              <Card className="hover:bg-surface-container-high/60 transition-all group border-white/10">
+                <Link to={`/symbol/${stock.symbol}`} className="block">
                   <div className="text-xl font-bold text-white group-hover:text-primary transition-colors">
                     {stock.symbol}
                   </div>
@@ -40,9 +43,19 @@ export const Stocks = () => {
                     <div className="text-indigo-200/60">Volume</div>
                     <div className="text-right text-indigo-50">{formatNumber(stock.volume)}</div>
                   </div>
-                </Card>
-                </motion.div>
-              </Link>
+                </Link>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-5 w-full gap-2"
+                  disabled={analyzeMutation.isPending}
+                  onClick={() => analyzeMutation.mutate(stock.symbol)}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {analyzeMutation.isPending && analyzeMutation.variables === stock.symbol ? 'Analyzing' : 'Analyze'}
+                </Button>
+              </Card>
+              </motion.div>
             ))}
           </div>
         )}

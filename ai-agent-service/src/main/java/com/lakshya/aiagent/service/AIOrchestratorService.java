@@ -7,8 +7,10 @@ import com.lakshya.aiagent.dto.UserQueryResponse;
 import com.lakshya.aiagent.kafka.RecommendationProducer;
 import com.lakshya.aiagent.model.RecommendationEvent;
 import com.lakshya.aiagent.model.StockEvent;
+import com.lakshya.aiagent.model.StockPriceSnapshot;
 import com.lakshya.aiagent.model.StockRecommendation;
 import com.lakshya.aiagent.model.TechnicalSnapshot;
+import com.lakshya.aiagent.repository.StockPriceSnapshotRepository;
 import com.lakshya.aiagent.repository.StockRecommendationRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ public class AIOrchestratorService {
     private final AiParserService aiParserService;
     private final RecommendationProducer recommendationProducer;
     private final StockRecommendationRepository repository;
+    private final StockPriceSnapshotRepository stockPriceSnapshotRepository;
     private final TechnicalFeatureService technicalFeatureService;
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -48,7 +51,7 @@ public class AIOrchestratorService {
      * This bypasses intent classification and directly runs the full
      * TECHNICALS pipeline (existing behaviour preserved).
      */
-    public void processStockEvent(StockEvent stockEvent) {
+    public StockRecommendation processStockEvent(StockEvent stockEvent) {
         try {
             log.info("🔍 Processing stock event for {}", stockEvent.getSymbol());
 
@@ -68,11 +71,11 @@ public class AIOrchestratorService {
             entity.setTimestamp(System.currentTimeMillis());
 
             // 4. Persist
-            repository.save(entity);
+            StockRecommendation savedRecommendation = repository.save(entity);
             log.info("✅ Saved recommendation: symbol={}, action={}", entity.getSymbol(), entity.getRecommendation());
 
             // 5. Store recommendation plus market setup for future RAG
-            ragService.storeEmbedding(entity, technicalSnapshot);
+            ragService.storeEmbedding(savedRecommendation, technicalSnapshot);
 
             // 6. Publish to Kafka
             RecommendationEvent event = new RecommendationEvent(
@@ -83,10 +86,33 @@ public class AIOrchestratorService {
             );
             recommendationProducer.sendRecommendation(event);
             log.info("📤 Published recommendation to Kafka: symbol={}", entity.getSymbol());
+            return savedRecommendation;
 
         } catch (Exception e) {
             log.error("❌ Failed to process stock event for {}: {}", stockEvent.getSymbol(), e.getMessage(), e);
+            return null;
         }
+    }
+
+    public StockRecommendation analyzeLatestSymbol(String symbol) {
+        String normalizedSymbol = symbol == null ? "" : symbol.trim().toUpperCase();
+        StockPriceSnapshot snapshot = stockPriceSnapshotRepository
+                .findTopBySymbolOrderByUpdatedAtDesc(normalizedSymbol)
+                .orElseThrow(() -> new RuntimeException("No stock snapshot found for symbol: " + symbol));
+
+        StockEvent stockEvent = new StockEvent();
+        stockEvent.setSymbol(snapshot.getSymbol());
+        stockEvent.setPrice(snapshot.getPrice());
+        stockEvent.setHigh(snapshot.getHigh());
+        stockEvent.setLow(snapshot.getLow());
+        stockEvent.setVolume(snapshot.getVolume());
+        stockEvent.setPreviousClose(snapshot.getPreviousClose());
+
+        StockRecommendation recommendation = processStockEvent(stockEvent);
+        if (recommendation == null) {
+            throw new RuntimeException("AI analysis failed for symbol: " + symbol);
+        }
+        return recommendation;
     }
 
     // ─── User-query flow (REST API) ─────────────────────────────────────────────
