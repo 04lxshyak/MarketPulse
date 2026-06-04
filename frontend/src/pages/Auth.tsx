@@ -6,6 +6,23 @@ import toast from 'react-hot-toast';
 import { Card, Input, Button } from '../components/ui/Core';
 import { motion } from 'framer-motion';
 import { BrandLogo } from '../components/ui/BrandLogo';
+import axios from 'axios';
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    if (typeof data === 'string' && data.trim()) {
+      return data;
+    }
+    if (data && typeof data === 'object') {
+      const message = 'detail' in data ? data.detail : 'message' in data ? data.message : 'error' in data ? data.error : undefined;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+  }
+  return fallback;
+};
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -19,8 +36,8 @@ export const Login = () => {
       setToken(res.token);
       toast.success('Login successful');
       navigate('/dashboard');
-    } catch {
-      toast.error('Invalid credentials');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Invalid credentials'));
     }
   };
 
@@ -64,8 +81,8 @@ export const Register = () => {
       await register({ name, email, password });
       toast.success('Registration successful. Please login.');
       navigate('/login');
-    } catch {
-      toast.error('Registration failed');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Registration failed'));
     }
   };
 

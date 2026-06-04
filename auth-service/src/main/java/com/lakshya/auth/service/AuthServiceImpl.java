@@ -7,8 +7,10 @@ import com.lakshya.auth.entity.User;
 import com.lakshya.auth.repository.UserRepository;
 import com.lakshya.auth.util.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -20,8 +22,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public String register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+        }
 
         User user = User.builder()
+                .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();

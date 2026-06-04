@@ -5,6 +5,7 @@ import com.lakshya.auth.dto.LoginRequest;
 import com.lakshya.auth.dto.RegisterRequest;
 import com.lakshya.auth.dto.AuthResponse;
 import com.lakshya.auth.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,7 +19,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public String register(@RequestBody RegisterRequest request) {
+    public String register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
         return "User registered successfully";
     }
