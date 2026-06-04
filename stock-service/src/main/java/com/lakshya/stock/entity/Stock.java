@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(indexes = {
+        @Index(name = "idx_stock_symbol_updated_at", columnList = "symbol, updatedAt")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
