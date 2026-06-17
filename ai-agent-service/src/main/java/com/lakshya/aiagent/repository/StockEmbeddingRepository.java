@@ -11,6 +11,6 @@ import java.util.List;
 @Repository
 public interface StockEmbeddingRepository extends JpaRepository<StockEmbedding, Long> {
 
-    @Query(value = "SELECT * FROM stock_embedding WHERE symbol = :symbol ORDER BY embedding <-> cast(:vector as vector) LIMIT :maxResults", nativeQuery = true)
+    @Query(value = "SELECT * FROM stock_embedding WHERE symbol = :symbol ORDER BY embedding <=> cast(:vector as vector) LIMIT :maxResults", nativeQuery = true)
     List<StockEmbedding> findSimilarBySymbol(@Param("symbol") String symbol, @Param("vector") String vector, @Param("maxResults") int maxResults);
 }
